@@ -16,30 +16,41 @@ func main() {
 	}
 	defer file.Close()
 
-	currLine := ""
-	for {
-		var bytes [8]byte
-		n, err := file.Read(bytes[:])
-		if err != nil {
-			if currLine != "" {
-				fmt.Printf("read: %s\n", currLine)
-				currLine = ""
-			}
-			if errors.Is(err, io.EOF) {
+	linesChan := getLinesChannel(file)
+	for line := range linesChan {
+		fmt.Printf("read: %s\n", line)
+	}
+}
+
+func getLinesChannel(file io.ReadCloser) <-chan string {
+	lines := make(chan string)
+	go func() {
+		defer close(lines)
+		currLine := ""
+		for {
+			var bytes [8]byte
+			n, err := file.Read(bytes[:])
+			if err != nil {
+				if currLine != "" {
+					lines <- currLine
+				}
+				if errors.Is(err, io.EOF) {
+					break
+				}
+				fmt.Println("Error reading file:", err)
 				break
 			}
-			fmt.Println("Error reading file:", err)
-			break
-		}
 
-		currBytes := string(bytes[:n])
-		parts := strings.Split(currBytes, "\n")
-		for i, part := range parts {
-			if i < len(parts)-1 {
-				fmt.Printf("read: %s%s\n", currLine, part)
-				currLine = ""
+			currBytes := string(bytes[:n])
+			parts := strings.Split(currBytes, "\n")
+			for i, part := range parts {
+				if i < len(parts)-1 {
+					lines <- currLine + part
+					currLine = ""
+				}
 			}
+			currLine += parts[len(parts)-1]
 		}
-		currLine += parts[len(parts)-1]
-	}
+	}()
+	return lines
 }
