@@ -4,32 +4,48 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"os"
+	"net"
 	"strings"
 )
 
 func main() {
-	file, err := os.Open("messages.txt")
+	// file, err := os.Open("messages.txt")
+	// if err != nil {
+	// 	fmt.Println("Error opening file:", err)
+	// 	return
+	// }
+	// defer file.Close()
+
+	listener, err := net.Listen("tcp", ":42069")
 	if err != nil {
-		fmt.Println("Error opening file:", err)
+		fmt.Println("Error starting server:", err)
 		return
 	}
-	defer file.Close()
+	defer listener.Close()
+	fmt.Println("Server is listening on port 42069...")
 
-	linesChan := getLinesChannel(file)
+	conn, err := listener.Accept()
+	if err != nil {
+		fmt.Println("Error accepting connection:", err)
+		return
+	}
+	defer conn.Close()
+	fmt.Println("Client connected:", conn.RemoteAddr())
+
+	linesChan := getLinesChannel(conn)
 	for line := range linesChan {
-		fmt.Printf("read: %s\n", line)
+		fmt.Printf("%s\n", line)
 	}
 }
 
-func getLinesChannel(file io.ReadCloser) <-chan string {
+func getLinesChannel(conn net.Conn) <-chan string {
 	lines := make(chan string)
 	go func() {
 		defer close(lines)
 		currLine := ""
 		for {
 			var bytes [8]byte
-			n, err := file.Read(bytes[:])
+			n, err := conn.Read(bytes[:])
 			if err != nil {
 				if currLine != "" {
 					lines <- currLine
