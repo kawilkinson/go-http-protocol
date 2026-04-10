@@ -27,15 +27,15 @@ func NewHeaders() Headers {
 
 func (h Headers) Parse(data []byte) (n int, done bool, err error) {
 	dataStr := string(data)
-	if !strings.Contains(dataStr, crlf) {
-		return 0, false, errors.New("invalid header: missing CRLF")
+	idx := strings.Index(dataStr, crlf)
+	if idx == -1 {
+		return 0, false, nil
 	}
-	if dataStr[:2] == crlf {
+	if idx == 0 {
 		// empty line, headers are done, consume the CRLF
 		return 2, true, nil
 	}
 
-	idx := strings.Index(dataStr, crlf)
 	dataParts := strings.SplitN(dataStr[:idx], ":", 2)
 	headerName := dataParts[0]
 	if headerName != strings.TrimSpace(headerName) {
