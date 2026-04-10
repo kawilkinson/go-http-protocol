@@ -22,8 +22,6 @@ func main() {
 	defer listener.Close()
 	fmt.Println("Server is listening on port 42069...")
 
-
-
 	for {
 		conn, err := listener.Accept()
 		if err != nil {
