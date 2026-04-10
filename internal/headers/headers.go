@@ -47,8 +47,12 @@ func (h Headers) Parse(data []byte) (n int, done bool, err error) {
 		return 0, false, errors.New("invalid header: header name contains invalid characters")
 	}
 
+	headerName = strings.ToLower(headerName)
 	headerValue := strings.TrimSpace(dataParts[1])
-	h[strings.ToLower(headerName)] = headerValue
+	if existingValue, exists := h[headerName]; exists {
+		headerValue = existingValue + ", " + headerValue
+	}
+	h[headerName] = headerValue
 	return idx + 2, false, nil
 }
 
