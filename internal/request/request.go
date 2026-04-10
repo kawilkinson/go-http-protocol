@@ -1,7 +1,6 @@
 package request
 
 import (
-	"bytes"
 	"errors"
 	"fmt"
 	"http_protocol/internal/headers"
@@ -71,9 +70,9 @@ func RequestFromReader(reader io.Reader) (*Request, error) {
 }
 
 func parseRequestLine(request []byte) (*RequestLine, int, error) {
-	idx := bytes.Index(request, []byte(crlf))
 	requestStr := string(request)
-	if !strings.Contains(requestStr, "\r\n") {
+	idx := strings.Index(requestStr, crlf)
+	if idx == -1 {
 		return nil, 0, nil
 	}
 	requestStr = requestStr[:idx]
