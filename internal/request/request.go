@@ -81,7 +81,7 @@ func parseRequestLine(request []byte) (*RequestLine, int, error) {
 		return nil, 0, err
 	}
 
-	return requestLine, len(requestStr) + 2, nil
+	return requestLine, idx + 2, nil
 }
 
 func parseRequestLineFromString(str string) (*RequestLine, error) {
