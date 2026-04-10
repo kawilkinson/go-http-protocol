@@ -40,8 +40,16 @@ func main() {
 		httpVersion := request.RequestLine.HttpVersion
 		method := request.RequestLine.Method
 		requestTarget := request.RequestLine.RequestTarget
-		fmt.Printf("Request line:\n- Method: %s\n- Target: %s\n- Version: %s\n", method, requestTarget, httpVersion)
+		fmt.Printf("Request line:\n")
+		fmt.Printf("- Method: %s\n", method)
+		fmt.Printf("- Target: %s\n", requestTarget)
+		fmt.Printf("- Version: %s\n", httpVersion)
 
+		fmt.Printf("Headers:\n")
+		for key, value := range request.Headers {
+			fmt.Printf("- %s: %s\n", key, value)
+		}
+		
 		// linesChan := getLinesChannel(conn)
 		// for line := range linesChan {
 		// 	fmt.Printf("%s\n", line)
