@@ -5,13 +5,17 @@ import (
 	"fmt"
 	"http_protocol/internal/headers"
 	"io"
+	"strconv"
 	"strings"
 )
 
 type Request struct {
 	RequestLine RequestLine
-	state       requestState
 	Headers     headers.Headers
+	Body        []byte
+
+	state          requestState
+	bodyLengthRead int
 }
 
 type RequestLine struct {
@@ -25,6 +29,7 @@ type requestState int
 const (
 	requestStateInitialized requestState = iota
 	requestStateParsingHeaders
+	requestStateParsingBody
 	requestStateDone
 )
 
@@ -37,6 +42,7 @@ func RequestFromReader(reader io.Reader) (*Request, error) {
 	request := &Request{
 		state:   requestStateInitialized,
 		Headers: headers.NewHeaders(),
+		Body: make([]byte, 0),
 	}
 	for request.state != requestStateDone {
 		if readToIndex >= len(buffer) {
@@ -156,9 +162,31 @@ func (r *Request) parseSingle(data []byte) (int, error) {
 			return 0, err
 		}
 		if done {
-			r.state = requestStateDone
+			r.state = requestStateParsingBody
 		}
 		return n, nil
+
+	// parsing body state
+	case requestStateParsingBody:
+		contentLengthStr, exists := r.Headers.Get("Content-Length")
+		if !exists {
+			// no content length header, assume no body and we're done
+			r.state = requestStateDone
+			return len(data), nil
+		}
+		contentLength, err := strconv.Atoi(contentLengthStr)
+		if err != nil {
+			return 0, fmt.Errorf("malformed Content-Length: %s", err)
+		}
+		r.Body = append(r.Body, data...)
+		r.bodyLengthRead += len(data)
+		if r.bodyLengthRead > contentLength {
+			return 0, fmt.Errorf("Content-Length too large")
+		}
+		if r.bodyLengthRead == contentLength {
+			r.state = requestStateDone
+		}
+		return len(data), nil
 
 	// done state
 	case requestStateDone:
