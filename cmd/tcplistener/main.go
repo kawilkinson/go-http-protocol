@@ -49,6 +49,9 @@ func main() {
 		for key, value := range request.Headers {
 			fmt.Printf("- %s: %s\n", key, value)
 		}
+
+		fmt. Printf("Body:\n")
+		fmt.Printf("%s\n", string(request.Body))
 		
 		// linesChan := getLinesChannel(conn)
 		// for line := range linesChan {
