@@ -3,6 +3,7 @@ package server
 import (
 	"fmt"
 	"http_protocol/internal/request"
+	"http_protocol/internal/response"
 	"net"
 	"sync/atomic"
 )
@@ -48,19 +49,21 @@ func (s *Server) handle(conn net.Conn) {
 	defer conn.Close()
 	fmt.Println("Client connected:", conn.RemoteAddr())
 
-	_, err := request.RequestFromReader(conn)
+	request, err := request.RequestFromReader(conn)
 	if err != nil {
 		fmt.Println("Error parsing request:", err)
 		return
 	}
 
-	// static response for now
-	response := "HTTP/1.1 200 OK\n" +
-		"Content-Type: text/plain\n" +
-		"Content-Length: 13\n" +
-		"\n" +
-		"Hello World! \n"
-	conn.Write([]byte(response))
-
-	fmt.Printf("%v", response)
+	err = response.WriteStatusLine(conn, response.StatusOK)
+	if err != nil {
+		fmt.Println("Error writing status line:", err)
+		return
+	}
+	responseHeaders := response.GetDefaultHeaders(len(request.Body))
+	err = response.WriteHeaders(conn, responseHeaders)
+	if err != nil {
+		fmt.Println("Error writing headers:", err)
+		return
+	}
 }
