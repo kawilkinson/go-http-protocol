@@ -1,6 +1,7 @@
 package server
 
 import (
+	"bytes"
 	"fmt"
 	"http_protocol/internal/request"
 	"http_protocol/internal/response"
@@ -11,16 +12,17 @@ import (
 type Server struct {
 	listener net.Listener
 	done     atomic.Bool
+	handler Handler
 }
 
-func Serve(port int) (*Server, error) {
+func Serve(port int, handler Handler) (*Server, error) {
 	listener, err := net.Listen("tcp", fmt.Sprintf(":%d", port))
 	if err != nil {
 		return nil, err
 	}
 
 	fmt.Printf("Server is listening on port %d...\n", port)
-	server := &Server{listener: listener, done: atomic.Bool{}}
+	server := &Server{listener: listener, done: atomic.Bool{}, handler: handler}
 	go server.listen()
 	return server, nil
 }
@@ -51,7 +53,18 @@ func (s *Server) handle(conn net.Conn) {
 
 	request, err := request.RequestFromReader(conn)
 	if err != nil {
-		fmt.Println("Error parsing request:", err)
+		hErr := &HandlerError{
+			StatusCode: response.StatusBadRequest,
+			Message:    err.Error(),
+		}
+		hErr.WriteError(conn)
+		return
+	}
+
+	buf := bytes.NewBuffer([]byte{})
+	hErr := s.handler(buf, request)
+	if hErr != nil {
+		hErr.WriteError(conn)
 		return
 	}
 
@@ -60,10 +73,12 @@ func (s *Server) handle(conn net.Conn) {
 		fmt.Println("Error writing status line:", err)
 		return
 	}
-	responseHeaders := response.GetDefaultHeaders(len(request.Body))
+	responseHeaders := response.GetDefaultHeaders(len(buf.Bytes()))
 	err = response.WriteHeaders(conn, responseHeaders)
 	if err != nil {
 		fmt.Println("Error writing headers:", err)
 		return
 	}
+
+	conn.Write(buf.Bytes())
 }
